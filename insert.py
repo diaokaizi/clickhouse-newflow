@@ -1,37 +1,13 @@
-import clickhouse_connect
-import sys
 import json
 import requests
-import os
 import json
 import datetime
 from urllib import parse
-import pytz
 import schedule
 import time
-CLICKHOUSE_CLOUD_HOSTNAME = '127.0.0.1'
-CLICKHOUSE_CLOUD_USER = 'default'
-CLICKHOUSE_CLOUD_PASSWORD = '123456'
+from clickhouse import connect_client
 
-client = clickhouse_connect.get_client(
-    host=CLICKHOUSE_CLOUD_HOSTNAME, port=8123, username=CLICKHOUSE_CLOUD_USER, password=CLICKHOUSE_CLOUD_PASSWORD)
-
-print("connected to " + CLICKHOUSE_CLOUD_HOSTNAME + "\n")
-# client.command(
-#     "CREATE TABLE IF NOT EXISTS netflow (\
-#         start DateTime('Asia/Shanghai'), \
-#         end DateTime('Asia/Shanghai'), \
-#         srcIP String, \
-#         dstIP String, \
-#         srcTransportPort UInt16, \
-#         dstTransportPort UInt16, \
-#         transport String, \
-#         bgpSrcAsNumber UInt16, \
-#         bgpDstAsNumber UInt16, \
-#         bytes UInt32, \
-#         packets UInt16, \
-#         flowDirection UInt8, \
-#         ) ENGINE MergeTree ORDER BY start")
+client = connect_client()
 
 class NetflowObj:
     def __init__(self, start, end, srcIP, dstIP, srcTransportPort, dstTransportPort, transport, bgpSrcAsNumber, bgpDstAsNumber, bytes, packets, flowDirection):
@@ -148,8 +124,26 @@ def insert_data_clickhouse(host:str):
                                                  'transport', 'bgpSrcAsNumber', 'bgpDstAsNumber', 'bytes', 'packets', 'flowDirection'])
     print('insert finish', start_datetime, len(data))
 
+def creat_table():
+    client.command(
+        "CREATE TABLE IF NOT EXISTS netflow (\
+            start DateTime('Asia/Shanghai'), \
+            end DateTime('Asia/Shanghai'), \
+            srcIP String, \
+            dstIP String, \
+            srcTransportPort UInt16, \
+            dstTransportPort UInt16, \
+            transport String, \
+            bgpSrcAsNumber UInt16, \
+            bgpDstAsNumber UInt16, \
+            bytes UInt32, \
+            packets UInt16, \
+            flowDirection UInt8, \
+            ) ENGINE MergeTree ORDER BY start")
+
 if __name__ == '__main__':
     host = "223.193.36.79:7140"
+    creat_table()
     schedule.every(5).minutes.at(":10").do(insert_data_clickhouse, host)
     while True:
         schedule.run_pending()
